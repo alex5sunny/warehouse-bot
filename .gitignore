@@ -1,1 +1,46 @@
-/.venv/
+# Byte-compiled / optimized / compiled files
+__pycache__/
+*.pyc
+*.pyd
+*.pyo
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+env/
+venv/
+lib/python*/site-packages/
+.env
+.flaskenv
+.venv
+
+# Unit test / coverage reports
+.coverage
+.tox/
+htmlcov/
+
+# Development tools
+.mypy_cache/
+.pytest_cache/
+
+# IDE-specific files
+.idea/  # IntelliJ IDEA / PyCharm
+*.iml
+.vscode/ # VS Code
+.DS_Store # macOS
+Thumbs.db # Windows
+
+# Jupyter Notebook files
+.ipynb_checkpoints
+
+# Logs and databases
+*.log
+*.sqlite3
+*.db
+
+# Environment variables
+.envrc
+
+.idea

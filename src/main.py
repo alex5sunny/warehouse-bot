@@ -1,23 +1,22 @@
-import logging
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
 
+from db.create_db import create_db
+from db.storage import get_devices
+from globs import DB_PATH
+from logger_config import setup_logger
 
-# Включим логирование
-logging.basicConfig(
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level=logging.INFO
-)
+logger = setup_logger(__file__)
 
 
 # База данных устройств (в реальном проекте используй SQLite или другую БД)
-devices = [
-    {"id": 1, "name": "Dell XPS 13", "serial": "A1B2", "room": "Кабинет 101"},
-    {"id": 2, "name": "MacBook Pro", "serial": "C3D4", "room": "Кабинет 205"},
-    {"id": 3, "name": "Lenovo ThinkPad", "serial": "E5F6", "room": "Переговорная 3"},
-    {"id": 4, "name": "HP EliteBook", "serial": "G7H8", "room": "Кабинет 101"},
-    {"id": 5, "name": "Asus ZenBook", "serial": "I9J0", "room": "Кабинет 205"}
-]
+# devices = [
+#     {"id": 1, "name": "Dell XPS 13", "serial": "A1B2", "room": "Кабинет 101"},
+#     {"id": 2, "name": "MacBook Pro", "serial": "C3D4", "room": "Кабинет 205"},
+#     {"id": 3, "name": "Lenovo ThinkPad", "serial": "E5F6", "room": "Переговорная 3"},
+#     {"id": 4, "name": "HP EliteBook", "serial": "G7H8", "room": "Кабинет 101"},
+#     {"id": 5, "name": "Asus ZenBook", "serial": "I9J0", "room": "Кабинет 205"}
+# ]
 
 # Команда /start
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -40,6 +39,7 @@ async def show_devices(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     # Формируем строки таблицы
     table_rows = []
+    devices = get_devices(DB_PATH)
     for device in devices:
         name = device['name'][:10].ljust(10)  # Обрезаем до 10 символов
         serial = device['serial'].ljust(8)
@@ -67,31 +67,31 @@ async def handle_device_selection(update: Update, context: ContextTypes.DEFAULT_
     await query.answer()
     
     device_id = int(query.data.split('_')[1])
-    selected_device = next((device for device in devices if device['id'] == device_id), None)
+    # selected_device = next((device for device in devices if device['id'] == device_id), None)
     
-    if selected_device:
-        response = f"""
-📱 **Информация об устройстве:**
-
-💻 **Название:** {selected_device['name']}
-🔢 **Серийный номер:** {selected_device['serial']}
-🏠 **Комната:** {selected_device['room']}
-🆔 **ID:** {selected_device['id']}
-
-Что вы хотите сделать с этим устройством?
-        """
-        
-        # Кнопки действий для выбранного устройства
-        keyboard = [
-            [InlineKeyboardButton("🔄 Обновить информацию", callback_data=f"edit_{device_id}")],
-            [InlineKeyboardButton("📋 Вернуться к списку", callback_data="back_to_list")],
-            [InlineKeyboardButton("❌ Удалить", callback_data=f"delete_{device_id}")]
-        ]
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        
-        await query.edit_message_text(response, parse_mode='Markdown', reply_markup=reply_markup)
-    else:
-        await query.edit_message_text("❌ Устройство не найдено!")
+#     if selected_device:
+#         response = f"""
+# 📱 **Информация об устройстве:**
+#
+# 💻 **Название:** {selected_device['name']}
+# 🔢 **Серийный номер:** {selected_device['serial']}
+# 🏠 **Комната:** {selected_device['room']}
+# 🆔 **ID:** {selected_device['id']}
+#
+# Что вы хотите сделать с этим устройством?
+#         """
+#
+#         # Кнопки действий для выбранного устройства
+#         keyboard = [
+#             [InlineKeyboardButton("🔄 Обновить информацию", callback_data=f"edit_{device_id}")],
+#             [InlineKeyboardButton("📋 Вернуться к списку", callback_data="back_to_list")],
+#             [InlineKeyboardButton("❌ Удалить", callback_data=f"delete_{device_id}")]
+#         ]
+#         reply_markup = InlineKeyboardMarkup(keyboard)
+#
+#         await query.edit_message_text(response, parse_mode='Markdown', reply_markup=reply_markup)
+#     else:
+#         await query.edit_message_text("❌ Устройство не найдено!")
 
 # Обработчик других действий
 async def handle_actions(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -116,6 +116,7 @@ async def show_devices_callback(update: Update, context: ContextTypes.DEFAULT_TY
     table_header += "├──────────┼──────────┼──────────┤\n"
     
     table_rows = []
+    devices = get_devices(DB_PATH)
     for device in devices:
         name = device['name'][:10].ljust(10)
         serial = device['serial'].ljust(8)
@@ -157,7 +158,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # Основная функция
 def main():
-    # Токен бота (замени на свой)
+    create_db(DB_PATH)
     TOKEN = "7805794447:AAErdCjhBJ1Dxjx3sQgFj0hPXtSKnruvXXI"
     
     # Создаем приложение
