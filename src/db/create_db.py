@@ -1,3 +1,4 @@
+import random
 import sqlite3
 from pathlib import Path
 from sqlite3 import Cursor
@@ -32,15 +33,35 @@ def _create_db(cursor: Cursor, sql_path):
 
 def fill_db(cursor: Cursor):
     devices = [
-        {"id": 1, "name": "Dell XPS 13", "serial": "A1B2", "room": "Кабинет 101"},
-        {"id": 2, "name": "MacBook Pro", "serial": "C3D4", "room": "Кабинет 205"},
-        {"id": 3, "name": "Lenovo ThinkPad", "serial": "E5F6", "room": "Переговорная 3"},
-        {"id": 4, "name": "HP EliteBook", "serial": "G7H8", "room": "Кабинет 101"},
-        {"id": 5, "name": "Asus ZenBook", "serial": "I9J0", "room": "Кабинет 205"}
+        {"name": "Dell XPS 13", "serial": "A1B2", "room": "Кабинет 101"},
+        {"name": "MacBook Pro", "serial": "C3D4", "room": "Кабинет 205"},
+        {"name": "Lenovo ThinkPad", "serial": "E5F6", "room": "Переговорная 3"},
+        {"name": "HP EliteBook", "serial": "G7H8", "room": "Кабинет 101"},
+        {"name": "Asus ZenBook", "serial": "I9J0", "room": "Кабинет 205"},
+        {"name": "коробка", "serial": "ЛИС1", "room": "подвал"},
+        {"name": "коробка", "serial": "ЛИС2", "room": "Луганск"},
+        {"name": "коробка", "serial": "ЛИС3", "room": "Сенеж"},
+        {"name": "коробка", "serial": "ЛИС4", "room": "Алабино"}
     ]
 
     for dev in devices:
         cursor.execute(
-            "INSERT INTO devices (name, serial, room) VALUES (?, ?, ?)",
-            (dev['name'], dev['serial'], dev['room'])
+            "INSERT INTO devices (name, serial, room, user_name) VALUES (?, ?, ?, ?)",
+            (dev['name'], dev['serial'], dev['room'], random.choice('Дима ДимаР Ярослав Степан'.split()))
         )
+
+    for type_name in 'ноутбук коробка':
+        cursor.execute(
+            "INSERT INTO device_types (type_name) VALUES (?)",
+            (type_name,)
+        )
+
+    cursor.execute(
+        "INSERT INTO type_links"
+        "SELECT 1, id from DEVICES WHERE device.name <> 'коробка'"
+    )
+
+    cursor.execute(
+        "INSERT INTO type_links"
+        "SELECT 2, id from DEVICES WHERE device.name = 'коробка'"
+    )

@@ -7,7 +7,8 @@ CREATE TABLE IF NOT EXISTS devices (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
     serial TEXT NOT NULL UNIQUE,
-    room TEXT
+    room TEXT,
+    user_name TEXT
 );
 
 CREATE TABLE IF NOT EXISTS type_links (
