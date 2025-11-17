@@ -2,6 +2,7 @@ import sqlite3
 from pathlib import Path
 from sqlite3 import Cursor
 
+
 from logger_config import setup_logger
 
 
