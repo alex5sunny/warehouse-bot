@@ -2,20 +2,20 @@ import sqlite3
 from pathlib import Path
 from sqlite3 import Cursor
 
-
+from globs import SRC_PATH
 from logger_config import setup_logger
 
 
 logger = setup_logger(__file__)
 
 
-def create_db(db_path: Path):
+def create_db(db_path: Path, sql_path: Path):
     if db_path.exists():
         return
     try:
         with sqlite3.connect(db_path) as conn:
             cursor = conn.cursor()
-            _create_db(cursor)
+            _create_db(cursor, sql_path)
             fill_db(cursor)
     except Exception as ex:
         logger.exception('cannot create db')
@@ -24,16 +24,10 @@ def create_db(db_path: Path):
         raise
 
 
-def _create_db(cursor: Cursor):
-    cursor.execute('''
-        CREATE TABLE devices (
-            id INTEGER PRIMARY KEY,
-            name TEXT NOT NULL,
-            serial TEXT NOT NULL,
-            room TEXT,
-            CONSTRAINT UC_SERIAL UNIQUE (name, serial)
-        )
-    ''')
+def _create_db(cursor: Cursor, sql_path):
+    with open(sql_path , 'r', encoding='utf-8') as f:
+        sql_script = f.read()
+    cursor.executescript(sql_script)
 
 
 def fill_db(cursor: Cursor):

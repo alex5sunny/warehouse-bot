@@ -3,7 +3,7 @@ from telegram.ext import Application, CommandHandler, CallbackQueryHandler, Cont
 
 from db.create_db import create_db
 from db.storage import get_devices
-from globs import DB_PATH
+from globs import DB_PATH, SRC_PATH
 from logger_config import setup_logger
 
 logger = setup_logger(__file__)
@@ -158,7 +158,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # Основная функция
 def main():
-    create_db(DB_PATH)
+    create_db(DB_PATH, SRC_PATH / 'sql' / 'create_schema.sql')
     TOKEN = "7805794447:AAErdCjhBJ1Dxjx3sQgFj0hPXtSKnruvXXI"
     
     # Создаем приложение
