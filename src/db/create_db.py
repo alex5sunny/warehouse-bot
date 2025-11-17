@@ -1,13 +1,13 @@
+import logging
 import random
 import sqlite3
 from pathlib import Path
 from sqlite3 import Cursor
 
-from globs import SRC_PATH
 from logger_config import setup_logger
 
 
-logger = setup_logger(__file__)
+logger = setup_logger(__file__, level=logging.DEBUG)
 
 
 def create_db(db_path: Path, sql_path: Path):
@@ -40,8 +40,8 @@ def fill_db(cursor: Cursor):
         {"name": "Asus ZenBook", "serial": "I9J0", "room": "Кабинет 205"},
         {"name": "коробка", "serial": "ЛИС1", "room": "подвал"},
         {"name": "коробка", "serial": "ЛИС2", "room": "Луганск"},
-        {"name": "коробка", "serial": "ЛИС3", "room": "Сенеж"},
-        {"name": "коробка", "serial": "ЛИС4", "room": "Алабино"}
+        {"name": "коробка", "serial": "ЛИС3", "room": "520л"},
+        {"name": "коробка", "serial": "ЛИС4", "room": "520р"}
     ]
 
     for dev in devices:
@@ -50,18 +50,19 @@ def fill_db(cursor: Cursor):
             (dev['name'], dev['serial'], dev['room'], random.choice('Дима ДимаР Ярослав Степан'.split()))
         )
 
-    for type_name in 'ноутбук коробка':
+    for type_name in 'ноутбук коробка'.split():
+        # logger.debug(f'type_name:{type_name}')
         cursor.execute(
             "INSERT INTO device_types (type_name) VALUES (?)",
             (type_name,)
         )
 
     cursor.execute(
-        "INSERT INTO type_links"
-        "SELECT 1, id from DEVICES WHERE device.name <> 'коробка'"
+        "INSERT INTO type_links (type_id, device_id)"
+        "SELECT 1, id from devices WHERE devices.name <> 'коробка'"
     )
 
     cursor.execute(
-        "INSERT INTO type_links"
-        "SELECT 2, id from DEVICES WHERE device.name = 'коробка'"
+        "INSERT INTO type_links (type_id, device_id)"
+        "SELECT 2, id from devices WHERE devices.name = 'коробка'"
     )
