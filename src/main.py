@@ -33,18 +33,20 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # Команда /devices - показывает таблицу с кнопками
 async def show_devices(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Создаем заголовок таблицы
-    table_header = "📋 Список ноутбуков:\n\n"
-    table_header += "│ Название │ Серийный │ Комната │\n"
-    table_header += "├──────────┼──────────┼──────────┤\n"
+    table_header = "📋 Список устройств:\n\n"
+    table_header += "│ Назван │ Устрой │ Серийн │ Комнат │ Пользо │\n"
+    table_header += "├────────┼────────┼────────┤────────┼────────┤\n"
     
     # Формируем строки таблицы
     table_rows = []
     devices = get_devices(DB_PATH)
     for device in devices:
-        name = device['name'][:10].ljust(10)  # Обрезаем до 10 символов
-        serial = device['serial'].ljust(8)
-        room = device['room'][:10].ljust(10)  # Обрезаем до 10 символов
-        table_rows.append(f"│ {name} │ {serial} │ {room} │")
+        name = device['name'][:6].ljust(6)
+        type = device['type_name'][:6].ljust(6)
+        serial = device['serial'][:6].ljust(6)
+        room = device['room'][:6].ljust(6)
+        user_name = device['user_name'][:6].ljust(6)
+        table_rows.append(f"│ {name} │ {type} │ {serial} │ {room} │ {user_name} │")
     
     table_content = "\n".join(table_rows)
     
@@ -67,31 +69,32 @@ async def handle_device_selection(update: Update, context: ContextTypes.DEFAULT_
     await query.answer()
     
     device_id = int(query.data.split('_')[1])
-    # selected_device = next((device for device in devices if device['id'] == device_id), None)
+    devices = get_devices(DB_PATH)
+    selected_device = next((device for device in devices if device['id'] == device_id), None)
     
-#     if selected_device:
-#         response = f"""
-# 📱 **Информация об устройстве:**
-#
-# 💻 **Название:** {selected_device['name']}
-# 🔢 **Серийный номер:** {selected_device['serial']}
-# 🏠 **Комната:** {selected_device['room']}
-# 🆔 **ID:** {selected_device['id']}
-#
-# Что вы хотите сделать с этим устройством?
-#         """
-#
-#         # Кнопки действий для выбранного устройства
-#         keyboard = [
-#             [InlineKeyboardButton("🔄 Обновить информацию", callback_data=f"edit_{device_id}")],
-#             [InlineKeyboardButton("📋 Вернуться к списку", callback_data="back_to_list")],
-#             [InlineKeyboardButton("❌ Удалить", callback_data=f"delete_{device_id}")]
-#         ]
-#         reply_markup = InlineKeyboardMarkup(keyboard)
-#
-#         await query.edit_message_text(response, parse_mode='Markdown', reply_markup=reply_markup)
-#     else:
-#         await query.edit_message_text("❌ Устройство не найдено!")
+    if selected_device:
+        response = f"""
+📱 **Информация об устройстве:**
+
+💻 **Название:** {selected_device['name']}
+🔢 **Серийный номер:** {selected_device['serial']}
+🏠 **Комната:** {selected_device['room']}
+🆔 **ID:** {selected_device['id']}
+
+Что вы хотите сделать с этим устройством?
+        """
+
+        # Кнопки действий для выбранного устройства
+        keyboard = [
+            [InlineKeyboardButton("🔄 Обновить информацию", callback_data=f"edit_{device_id}")],
+            [InlineKeyboardButton("📋 Вернуться к списку", callback_data="back_to_list")],
+            [InlineKeyboardButton("❌ Удалить", callback_data=f"delete_{device_id}")]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+
+        await query.edit_message_text(response, parse_mode='Markdown', reply_markup=reply_markup)
+    else:
+        await query.edit_message_text("❌ Устройство не найдено!")
 
 # Обработчик других действий
 async def handle_actions(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -110,21 +113,22 @@ async def handle_actions(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # Показать устройства через callback (для кнопки "Назад")
 async def show_devices_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    
-    table_header = "📋 Список ноутбуков:\n\n"
-    table_header += "│ Название │ Серийный │ Комната │\n"
-    table_header += "├──────────┼──────────┼──────────┤\n"
-    
+
+    table_header = "📋 Список устройств:\n\n"
+    table_header += "│ Назван │ Устрой │ Серийн │ Комнат  │ Пользо │\n"
+    table_header += "├────────┼────────┼────────┤─────────┼────────┤\n"
+
     table_rows = []
     devices = get_devices(DB_PATH)
     for device in devices:
-        name = device['name'][:10].ljust(10)
-        serial = device['serial'].ljust(8)
-        room = device['room'][:10].ljust(10)
-        table_rows.append(f"│ {name} │ {serial} │ {room} │")
-    
+        name = device['name'][:6].ljust(6)
+        type = device['type_name'][:6].ljust(6)
+        serial = device['serial'][:6].ljust(6)
+        room = device['room'][:6].ljust(6)
+        user_name = device['user_name'][:6].ljust(6)
+        table_rows.append(f"│ {name} │ {type} │ {serial} │ {room} │ {user_name} │")
     table_content = "\n".join(table_rows)
-    
+
     keyboard = []
     for device in devices:
         button_text = f"{device['name']} ({device['serial']})"

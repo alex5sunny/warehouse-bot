@@ -4,7 +4,11 @@ from sqlite3 import Cursor
 
 
 def _get_devices(cursor: Cursor):
-    cursor.execute("SELECT * FROM devices")
+    cursor.execute("""
+    SELECT devices.id, name, type_name, serial, room, user_name
+    FROM devices JOIN type_links ON devices.id = type_links.device_id
+    JOIN device_types ON type_links.type_id = device_types.id
+    """)
     rows = cursor.fetchall()
 
     return [
