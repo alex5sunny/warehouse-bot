@@ -6,17 +6,9 @@ from db.storage import get_devices
 from globs import DB_PATH, SRC_PATH
 from logger_config import setup_logger
 
+
 logger = setup_logger(__file__)
 
-
-# База данных устройств (в реальном проекте используй SQLite или другую БД)
-# devices = [
-#     {"id": 1, "name": "Dell XPS 13", "serial": "A1B2", "room": "Кабинет 101"},
-#     {"id": 2, "name": "MacBook Pro", "serial": "C3D4", "room": "Кабинет 205"},
-#     {"id": 3, "name": "Lenovo ThinkPad", "serial": "E5F6", "room": "Переговорная 3"},
-#     {"id": 4, "name": "HP EliteBook", "serial": "G7H8", "room": "Кабинет 101"},
-#     {"id": 5, "name": "Asus ZenBook", "serial": "I9J0", "room": "Кабинет 205"}
-# ]
 
 # Команда /start
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -96,6 +88,11 @@ async def handle_device_selection(update: Update, context: ContextTypes.DEFAULT_
     else:
         await query.edit_message_text("❌ Устройство не найдено!")
 
+
+async def handle_edit(update: Update, device_id: int):
+    pass
+
+
 # Обработчик других действий
 async def handle_actions(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -105,6 +102,7 @@ async def handle_actions(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await show_devices_callback(update, context)
     elif query.data.startswith("edit_"):
         device_id = int(query.data.split('_')[1])
+        await handle_edit(update, device_id)
         await query.edit_message_text(f"✏️ Редактирование устройства ID: {device_id}\n\nЭта функция в разработке!")
     elif query.data.startswith("delete_"):
         device_id = int(query.data.split('_')[1])
