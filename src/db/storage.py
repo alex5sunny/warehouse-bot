@@ -28,10 +28,10 @@ def _get_device(cursor: Cursor, device_id: int):
     return {k: row[k] for k in row.keys()}
 
 
-def _set_location(cursor: Cursor, device_id: int, location: str):
+def _set_location(cursor: Cursor, device_id: int, location: str, user_name: str):
     cursor.execute(
-        "UPDATE devices SET room = ? WHERE devices.id = ?",
-        (location, device_id)
+        "UPDATE devices SET room = ?, user_name = ? WHERE devices.id = ?",
+        (location, user_name, device_id)
     )
 
 
@@ -50,7 +50,7 @@ def get_device(db_path: Path, device_id: int):
         return _get_device(cursor, device_id)
 
 
-def set_location(dp_path: Path, device_id: int, location: str):
+def set_location(dp_path: Path, device_id: int, location: str, user_name: str):
     with sqlite3.connect(dp_path) as conn:
         cursor = conn.cursor()
-        _set_location(cursor, device_id, location)
+        _set_location(cursor, device_id, location, user_name)

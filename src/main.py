@@ -78,8 +78,11 @@ async def handle_location_input(update: Update, context: ContextTypes.DEFAULT_TY
     if device_id:
         location = update.message.text.strip()
 
+        user = update.effective_user
+        user_name = user.username if user.username else f"user_{user.id}"
+
         # Вызываем функцию обновления локации
-        set_location(DB_PATH, device_id, location)
+        set_location(DB_PATH, device_id, location, user_name)
 
         # Очищаем контекст
         context.user_data.pop('editing_device_id', None)
