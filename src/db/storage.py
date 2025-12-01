@@ -1,6 +1,7 @@
 import sqlite3
 from pathlib import Path
 from sqlite3 import Cursor
+from typing import Any
 
 
 def _get_devices(cursor: Cursor):
@@ -16,7 +17,7 @@ def _get_devices(cursor: Cursor):
     ]
 
 
-def _get_device(cursor: Cursor, device_id: int):
+def _get_device(cursor: Cursor, device_id: int) -> dict[str, Any]:
     cursor.execute("""
     SELECT devices.id, name, type_name, serial, room, user_name
     FROM devices JOIN type_links ON devices.id = type_links.device_id
@@ -43,7 +44,7 @@ def get_devices(db_path: Path):
     return devices
 
 
-def get_device(db_path: Path, device_id: int):
+def get_device(db_path: Path, device_id: int) -> dict[str, Any]:
     with sqlite3.connect(db_path) as conn:
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()

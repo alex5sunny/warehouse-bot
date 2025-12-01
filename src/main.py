@@ -1,9 +1,11 @@
+import datetime
+
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes, MessageHandler, filters
 
 from db.create_db import create_db
-from db.storage import get_devices, set_location
-from globs import DB_PATH, SRC_PATH
+from db.storage import get_devices, set_location, get_device
+from globs import DB_PATH, SRC_PATH, ADMINS
 from logger_config import setup_logger
 
 
@@ -57,18 +59,15 @@ async def show_devices(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 # Обработчик кнопки "Обновить информацию" - запрашиваем новую локацию
-async def handle_update_device(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def handle_update_location(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
 
     device_id = int(query.data.split('_')[1])
     context.user_data['editing_device_id'] = device_id
+    device_name = get_device(DB_PATH, device_id)['name']
 
-    response = f"""
-✏️ **Обновление информации об устройстве**
-
-Введите новую локацию для устройства:
-    """
+    response = f'Введите новую локацию для устройства {device_name}:'
     await query.edit_message_text(response)
 
 
@@ -81,14 +80,56 @@ async def handle_location_input(update: Update, context: ContextTypes.DEFAULT_TY
         user = update.effective_user
         user_name = user.username if user.username else f"user_{user.id}"
 
+        # Получаем информацию об устройстве до обновления
+        device_before = get_device(DB_PATH, device_id)
+
         # Вызываем функцию обновления локации
         set_location(DB_PATH, device_id, location, user_name)
+
+        # Получаем информацию об устройстве после обновления
+        device_after = get_device(DB_PATH, device_id)
+
+        # Отправляем уведомления админам
+        await send_location_change_notification(
+            context.bot,
+            device_before,
+            device_after,
+            user_name
+        )
 
         # Очищаем контекст
         context.user_data.pop('editing_device_id', None)
 
         # Возвращаем к списку устройств
         await show_devices(update, context)
+
+
+async def send_location_change_notification(bot, device_before, device_after, changed_by):
+    """Отправляет уведомление об изменении локации админам"""
+
+    notification = f"""
+🔔 **Изменение локации устройства**
+
+💻 **Устройство:** {device_before['name']}
+🔢 **Серийный номер:** {device_before['serial']}
+
+📍 **Было:** {device_before['room']}
+📍 **Стало:** {device_after['room']}
+
+👤 **Изменено:** {changed_by}
+🕐 **Время:** {datetime.datetime.now().strftime('%d.%m.%Y %H:%M')}
+    """
+
+    # Отправляем уведомление всем админам
+    for admin_id in ADMINS:
+        try:
+            await bot.send_message(
+                chat_id=admin_id,
+                text=notification,
+                parse_mode='Markdown'
+            )
+        except Exception as e:
+            logger.error(f"Не удалось отправить уведомление админу {admin_id}: {e}")
 
 
 # Обработчик выбора устройства
@@ -114,7 +155,7 @@ async def handle_device_selection(update: Update, context: ContextTypes.DEFAULT_
 
         # Кнопки действий для выбранного устройства
         keyboard = [
-            [InlineKeyboardButton("🔄 Обновить информацию", callback_data=f"edit_{device_id}")],
+            [InlineKeyboardButton("🔄 Обновить локацию", callback_data=f"edit_{device_id}")],
             [InlineKeyboardButton("📋 Вернуться к списку", callback_data="back_to_list")],
             [InlineKeyboardButton("❌ Удалить", callback_data=f"delete_{device_id}")]
         ]
@@ -134,7 +175,7 @@ async def handle_actions(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await show_devices_callback(update, context)
     elif query.data.startswith("edit_"):
         device_id = int(query.data.split('_')[1])
-        await handle_update_device(update, context)  # Используем новый обработчик
+        await handle_update_location(update, context)  # Используем новый обработчик
     elif query.data.startswith("delete_"):
         device_id = int(query.data.split('_')[1])
         await query.edit_message_text(f"🗑️ Удаление устройства ID: {device_id}\n\nЭта функция в разработке!")
