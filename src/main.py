@@ -149,7 +149,7 @@ async def handle_device_selection(update: Update, context: ContextTypes.DEFAULT_
 📱 **Информация об устройстве:**
 
 💻 **Название:** {selected_device['name']}
-🔢 **Серийный номер:** {selected_device['serial']}
+🔢 **Инвентарный номер:** {selected_device['inventory_n']}
 🏠 **Комната:** {selected_device['room']}
 🆔 **ID:** {selected_device['id']}
 
