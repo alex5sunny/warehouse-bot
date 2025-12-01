@@ -33,21 +33,21 @@ def _create_db(cursor: Cursor, sql_path):
 
 def fill_db(cursor: Cursor):
     devices = [
-        {"name": "Dell XPS 13", "serial": "A1B2", "room": "Кабинет 101"},
-        {"name": "MacBook Pro", "serial": "C3D4", "room": "Кабинет 205"},
-        {"name": "Lenovo ThinkPad", "serial": "E5F6", "room": "Переговорная 3"},
-        {"name": "HP EliteBook", "serial": "G7H8", "room": "Кабинет 101"},
-        {"name": "Asus ZenBook", "serial": "I9J0", "room": "Кабинет 205"},
-        {"name": "коробка", "serial": "ЛИС1", "room": "подвал"},
-        {"name": "коробка", "serial": "ЛИС2", "room": "Луганск"},
-        {"name": "коробка", "serial": "ЛИС3", "room": "520л"},
-        {"name": "коробка", "serial": "ЛИС4", "room": "520р"}
+        {"name": "Dell XPS 13", "inventory_n": "A1B2", "room": "Кабинет 101"},
+        {"name": "MacBook Pro", "inventory_n": "C3D4", "room": "Кабинет 205"},
+        {"name": "Lenovo ThinkPad", "inventory_n": "E5F6", "room": "Переговорная 3"},
+        {"name": "HP EliteBook", "inventory_n": "G7H8", "room": "Кабинет 101"},
+        {"name": "Asus ZenBook", "inventory_n": "I9J0", "room": "Кабинет 205"},
+        {"name": "коробка", "inventory_n": "ЛИС1", "room": "подвал"},
+        {"name": "коробка", "inventory_n": "ЛИС2", "room": "Луганск"},
+        {"name": "коробка", "inventory_n": "ЛИС3", "room": "520л"},
+        {"name": "коробка", "inventory_n": "ЛИС4", "room": "520р"}
     ]
 
     for dev in devices:
         cursor.execute(
-            "INSERT INTO devices (name, serial, room, user_name) VALUES (?, ?, ?, ?)",
-            (dev['name'], dev['serial'], dev['room'], random.choice('Дима ДимаР Ярослав Степан'.split()))
+            "INSERT INTO devices (name, inventory_n, room, user_name) VALUES (?, ?, ?, ?)",
+            (dev['name'], dev['inventory_n'], dev['room'], random.choice('Дима ДимаР Ярослав Степан'.split()))
         )
 
     for type_name in 'ноутбук коробка'.split():

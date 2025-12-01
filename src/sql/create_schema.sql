@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS device_types (
 CREATE TABLE IF NOT EXISTS devices (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
-    serial TEXT NOT NULL UNIQUE,
+    inventory_n TEXT NOT NULL UNIQUE,
     room TEXT,
     user_name TEXT
 );

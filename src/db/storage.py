@@ -36,6 +36,20 @@ def _set_location(cursor: Cursor, device_id: int, location: str, user_name: str)
     )
 
 
+def _set_device_name(cursor: Cursor, device_id: int, name: str):
+    cursor.execute(
+        "UPDATE devices SET name = ? WHERE devices.id = ?",
+        (name, device_id)
+    )
+
+
+def _set_device_inventory_n(cursor: Cursor, device_id: int, inventory_n: str):
+    cursor.execute(
+        "UPDATE devices SET inventory_n = ? WHERE devices.id = ?",
+        (inventory_n, device_id)
+    )
+
+
 def get_devices(db_path: Path):
     with sqlite3.connect(db_path) as conn:
         conn.row_factory = sqlite3.Row
@@ -55,3 +69,15 @@ def set_location(dp_path: Path, device_id: int, location: str, user_name: str):
     with sqlite3.connect(dp_path) as conn:
         cursor = conn.cursor()
         _set_location(cursor, device_id, location, user_name)
+
+
+def set_device_name(dp_path: Path, device_id: int, name: str):
+    with sqlite3.connect(dp_path) as conn:
+        cursor = conn.cursor()
+        _set_device_name(cursor, device_id, name)
+
+
+def set_inventory_n(dp_path: Path, device_id: int, inventory_n: str):
+    with sqlite3.connect(dp_path) as conn:
+        cursor = conn.cursor()
+        _set_device_inventory_n(cursor, device_id, inventory_n)

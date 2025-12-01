@@ -9,6 +9,9 @@ from globs import DB_PATH, SRC_PATH, ADMINS
 from logger_config import setup_logger
 
 
+COL_WIDTH = 6
+
+
 logger = setup_logger(__file__)
 
 
@@ -28,26 +31,26 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def show_devices(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Создаем заголовок таблицы
     table_header = "📋 Список устройств:\n\n"
-    table_header += "│ Назван │ Устрой │ Серийн │ Комнат │ Пользо │\n"
+    table_header += "│ Назван │ Устрой │ Инвент │ Комнат │ Пользо │\n"
     table_header += "├────────┼────────┼────────┤────────┼────────┤\n"
     
     # Формируем строки таблицы
     table_rows = []
     devices = get_devices(DB_PATH)
     for device in devices:
-        name = device['name'][:6].ljust(6)
-        type = device['type_name'][:6].ljust(6)
-        serial = device['serial'][:6].ljust(6)
-        room = device['room'][:6].ljust(6)
-        user_name = device['user_name'][:6].ljust(6)
-        table_rows.append(f"│ {name} │ {type} │ {serial} │ {room} │ {user_name} │")
+        name = device['name'][:COL_WIDTH].ljust(COL_WIDTH)
+        type = device['type_name'][:COL_WIDTH].ljust(COL_WIDTH)
+        inventory_n = device['inventory_n'][:COL_WIDTH].rjust(COL_WIDTH)
+        room = device['room'][:COL_WIDTH].ljust(COL_WIDTH)
+        user_name = device['user_name'][:COL_WIDTH].ljust(COL_WIDTH)
+        table_rows.append(f"│ {name} │ {type} │ {inventory_n} │ {room} │ {user_name} │")
     
     table_content = "\n".join(table_rows)
     
     # Создаем кнопки для выбора устройств
     keyboard = []
     for device in devices:
-        button_text = f"{device['name']} ({device['serial']})"
+        button_text = f"{device['name']} ({device['inventory_n']})"
         keyboard.append([InlineKeyboardButton(button_text, callback_data=f"device_{device['id']}")])
     
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -111,7 +114,7 @@ async def send_location_change_notification(bot, device_before, device_after, ch
 🔔 **Изменение локации устройства**
 
 💻 **Устройство:** {device_before['name']}
-🔢 **Серийный номер:** {device_before['serial']}
+🔢 **Инвентарный номер:** {device_before['inventory_n']}
 
 📍 **Было:** {device_before['room']}
 📍 **Стало:** {device_after['room']}
@@ -192,17 +195,17 @@ async def show_devices_callback(update: Update, context: ContextTypes.DEFAULT_TY
     table_rows = []
     devices = get_devices(DB_PATH)
     for device in devices:
-        name = device['name'][:6].ljust(6)
-        type = device['type_name'][:6].ljust(6)
-        serial = device['serial'][:6].ljust(6)
-        room = device['room'][:6].ljust(6)
-        user_name = device['user_name'][:6].ljust(6)
-        table_rows.append(f"│ {name} │ {type} │ {serial} │ {room} │ {user_name} │")
+        name = device['name'][:COL_WIDTH].ljust(COL_WIDTH)
+        type = device['type_name'][:COL_WIDTH].ljust(COL_WIDTH)
+        inventory_n = device['inventory_n'][:COL_WIDTH].rjust(COL_WIDTH)
+        room = device['room'][:COL_WIDTH].ljust(COL_WIDTH)
+        user_name = device['user_name'][:COL_WIDTH].ljust(COL_WIDTH)
+        table_rows.append(f"│ {name} │ {type} │ {inventory_n} │ {room} │ {user_name} │")
     table_content = "\n".join(table_rows)
 
     keyboard = []
     for device in devices:
-        button_text = f"{device['name']} ({device['serial']})"
+        button_text = f"{device['name']} ({device['inventory_n']})"
         keyboard.append([InlineKeyboardButton(button_text, callback_data=f"device_{device['id']}")])
     
     reply_markup = InlineKeyboardMarkup(keyboard)
