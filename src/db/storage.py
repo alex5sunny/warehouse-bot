@@ -6,7 +6,7 @@ from typing import Any
 
 def _get_devices(cursor: Cursor):
     cursor.execute("""
-    SELECT devices.id, name, type_name, serial, room, user_name
+    SELECT devices.id, name, type_name, inventory_n, room, user_name
     FROM devices JOIN type_links ON devices.id = type_links.device_id
     JOIN device_types ON type_links.type_id = device_types.id
     """)
@@ -19,7 +19,7 @@ def _get_devices(cursor: Cursor):
 
 def _get_device(cursor: Cursor, device_id: int) -> dict[str, Any]:
     cursor.execute("""
-    SELECT devices.id, name, type_name, serial, room, user_name
+    SELECT devices.id, name, type_name, inventory_n, room, user_name
     FROM devices JOIN type_links ON devices.id = type_links.device_id
     JOIN device_types ON type_links.type_id = device_types.id
     WHERE devices.id = ?

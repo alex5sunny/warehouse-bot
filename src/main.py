@@ -184,7 +184,7 @@ async def handle_edit_inventory(update: Update, context: ContextTypes.DEFAULT_TY
     response = f"""
 🏷️ **Смена инвентарного номера**
 
-Текущий инвентарный: **{device['serial']}**
+Текущий инвентарный: **{device['inventory_n']}**
 
 Введите новый инвентарный номер:
     """
@@ -308,12 +308,19 @@ def main():
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("devices", show_devices))
     application.add_handler(CommandHandler("help", help_command))
-    application.add_handler(CallbackQueryHandler(handle_device_selection, pattern="^device_"))
-    application.add_handler(CallbackQueryHandler(
-        handle_actions,
-        pattern="^(back_to_list|edit_location_|edit_device_|edit_name_|edit_inventory_|delete_)")
+    application.add_handler(
+        CallbackQueryHandler(handle_device_selection, pattern="^device_")
     )
-    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_location_input))    # Запускаем бота
+    application.add_handler(
+        CallbackQueryHandler(
+            handle_actions,
+            pattern="^(back_to_list|edit_location_|edit_device_|edit_name_|"
+            "edit_inventory_|delete_)"
+        )
+    )
+    application.add_handler(
+        MessageHandler(filters.TEXT & ~filters.COMMAND, handle_location_input)
+    )
     print("Бот запущен...")
     application.run_polling()
 
