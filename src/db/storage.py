@@ -1,7 +1,13 @@
+import logging
 import sqlite3
 from pathlib import Path
 from sqlite3 import Cursor
 from typing import Any
+
+from logger_config import setup_logger
+
+
+logger = setup_logger(__file__, level=logging.DEBUG)
 
 
 def _get_devices(cursor: Cursor):
@@ -50,6 +56,14 @@ def _set_device_inventory_n(cursor: Cursor, device_id: int, inventory_n: str):
     )
 
 
+def _create_device(cursor: Cursor, name: str, inventory_n: str):
+    cursor.execute(
+        "INSERT INTO devices (name, inventory_n) VALUES (?, ?)",
+        (name, inventory_n)
+    )
+    logger.debug('Device inserted?')
+
+
 def get_devices(db_path: Path):
     with sqlite3.connect(db_path) as conn:
         conn.row_factory = sqlite3.Row
@@ -81,3 +95,10 @@ def set_inventory_n(dp_path: Path, device_id: int, inventory_n: str):
     with sqlite3.connect(dp_path) as conn:
         cursor = conn.cursor()
         _set_device_inventory_n(cursor, device_id, inventory_n)
+
+
+def create_device(dp_path: Path, name: str, inventory_n: str):
+    with sqlite3.connect(dp_path) as conn:
+        cursor = conn.cursor()
+        _create_device(cursor, name, inventory_n)
+

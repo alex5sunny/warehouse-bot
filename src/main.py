@@ -1,10 +1,11 @@
 import datetime
+import logging
 
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes, MessageHandler, filters
 
 from db.create_db import create_db
-from db.storage import get_devices, set_location, get_device, set_device_name, set_inventory_n
+from db.storage import get_devices, set_location, get_device, set_device_name, set_inventory_n, create_device
 from globs import DB_PATH, SRC_PATH, ADMINS
 from logger_config import setup_logger
 
@@ -52,10 +53,13 @@ async def show_devices(update: Update, context: ContextTypes.DEFAULT_TYPE):
     for device in devices:
         button_text = f"{device['name']} ({device['inventory_n']})"
         keyboard.append([InlineKeyboardButton(button_text, callback_data=f"device_{device['id']}")])
+
+    keyboard.append([InlineKeyboardButton("➕ Добавить устройство", callback_data="add_device")])
     
     reply_markup = InlineKeyboardMarkup(keyboard)
     
-    message_text = table_header + table_content + "\n\n👇 Выберите устройство:"
+    message_text = (table_header + table_content +
+                            "\n\n👇 Выберите устройство или добавьте новое:")
     await update.message.reply_text(f"```\n{message_text}\n```", 
                                    parse_mode='MarkdownV2', 
                                    reply_markup=reply_markup)
@@ -78,7 +82,37 @@ async def handle_location_input(update: Update, context: ContextTypes.DEFAULT_TY
     text = update.message.text.strip()
 
     # Проверяем, какое именно редактирование происходит
-    if 'editing_name_device_id' in context.user_data:
+    if context.user_data.get('adding_device') == 'name':
+        # Сохраняем название и запрашиваем инвентарный номер
+        context.user_data['new_device_name'] = text
+        context.user_data['adding_device'] = 'inventory'
+
+        response = f"""
+📝 **Добавление нового устройства**
+
+Название: **{text}**
+
+Теперь введите инвентарный номер:
+            """
+        await update.message.reply_text(response, parse_mode='Markdown')
+        return
+
+    elif context.user_data.get('adding_device') == 'inventory':
+        # Создаем устройство с сохраненным названием и введенным инвентарным номером
+        name = context.user_data['new_device_name']
+        inventory_n = text
+
+        # Создаем устройство в БД
+        create_device(DB_PATH, name, inventory_n)
+
+        # Очищаем контекст
+        context.user_data.pop('adding_device', None)
+        context.user_data.pop('new_device_name', None)
+
+        # Возвращаем к списку устройств
+        await show_devices(update, context)
+        return
+    elif 'editing_name_device_id' in context.user_data:
         device_id = context.user_data['editing_name_device_id']
         set_device_name(DB_PATH, device_id, text)
         context.user_data.pop('editing_name_device_id', None)
@@ -191,6 +225,17 @@ async def handle_edit_inventory(update: Update, context: ContextTypes.DEFAULT_TY
     await query.edit_message_text(response, parse_mode='Markdown')
 
 
+async def handle_add_device(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    response = "📝 **Добавление нового устройства**\n\nВведите название устройства:"
+    await query.edit_message_text(response, parse_mode='Markdown')
+
+    # Устанавливаем состояние ожидания ввода названия
+    context.user_data['adding_device'] = 'name'
+
+
 # Обработчик выбора устройства
 async def handle_device_selection(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -233,6 +278,8 @@ async def handle_actions(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if query.data == "back_to_list":
         await show_devices_callback(update, context)
+    elif query.data == "add_device":
+        await handle_add_device(update, context)
     elif query.data.startswith("edit_location_"):
         await handle_update_location(update, context)
     elif query.data.startswith("edit_device_"):
@@ -269,13 +316,16 @@ async def show_devices_callback(update: Update, context: ContextTypes.DEFAULT_TY
     for device in devices:
         button_text = f"{device['name']} ({device['inventory_n']})"
         keyboard.append([InlineKeyboardButton(button_text, callback_data=f"device_{device['id']}")])
-    
+
+    keyboard.append([InlineKeyboardButton("➕ Добавить устройство", callback_data="add_device")])
+
     reply_markup = InlineKeyboardMarkup(keyboard)
-    
-    message_text = table_header + table_content + "\n\n👇 Выберите устройство:"
-    await query.edit_message_text(f"```\n{message_text}\n```", 
-                                 parse_mode='MarkdownV2', 
-                                 reply_markup=reply_markup)
+
+    message_text = table_header + table_content + "\n\n👇 Выберите устройство или добавьте новое:"
+    await query.edit_message_text(f"```\n{message_text}\n```",
+                                  parse_mode='MarkdownV2',
+                                  reply_markup=reply_markup)
+
 
 # Команда помощи
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -314,13 +364,14 @@ def main():
     application.add_handler(
         CallbackQueryHandler(
             handle_actions,
-            pattern="^(back_to_list|edit_location_|edit_device_|edit_name_|"
-            "edit_inventory_|delete_)"
+            pattern="^(back_to_list|add_device|edit_location_|edit_device_|edit_name_|"
+                    "edit_inventory_|delete_)"
         )
     )
     application.add_handler(
         MessageHandler(filters.TEXT & ~filters.COMMAND, handle_location_input)
     )
+
     print("Бот запущен...")
     application.run_polling()
 
