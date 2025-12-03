@@ -4,7 +4,7 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes, MessageHandler, filters
 
 from db.create_db import create_db
-from db.storage import get_devices, set_location, get_device
+from db.storage import get_devices, set_location, get_device, set_device_name, set_inventory_n
 from globs import DB_PATH, SRC_PATH, ADMINS
 from logger_config import setup_logger
 
@@ -75,36 +75,56 @@ async def handle_update_location(update: Update, context: ContextTypes.DEFAULT_T
 
 
 async def handle_location_input(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    device_id = context.user_data.get('editing_device_id')
+    text = update.message.text.strip()
 
-    if device_id:
-        location = update.message.text.strip()
+    # Проверяем, какое именно редактирование происходит
+    if 'editing_name_device_id' in context.user_data:
+        device_id = context.user_data['editing_name_device_id']
+        set_device_name(DB_PATH, device_id, text)
+        context.user_data.pop('editing_name_device_id', None)
 
+    elif 'editing_inventory_device_id' in context.user_data:
+        device_id = context.user_data['editing_inventory_device_id']
+        set_inventory_n(DB_PATH, device_id, text)
+        context.user_data.pop('editing_inventory_device_id', None)
+
+    elif 'editing_device_id' in context.user_data:  # Для локации
+        device_id = context.user_data['editing_device_id']
+        location = text
         user = update.effective_user
         user_name = user.username if user.username else f"user_{user.id}"
-
-        # Получаем информацию об устройстве до обновления
-        device_before = get_device(DB_PATH, device_id)
-
-        # Вызываем функцию обновления локации
         set_location(DB_PATH, device_id, location, user_name)
-
-        # Получаем информацию об устройстве после обновления
-        device_after = get_device(DB_PATH, device_id)
-
-        # Отправляем уведомления админам
-        await send_location_change_notification(
-            context.bot,
-            device_before,
-            device_after,
-            user_name
-        )
-
-        # Очищаем контекст
         context.user_data.pop('editing_device_id', None)
 
-        # Возвращаем к списку устройств
-        await show_devices(update, context)
+    # Возвращаем к списку устройств
+    await show_devices(update, context)
+
+
+async def handle_edit_device(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    device_id = int(query.data.split('_')[2])
+    context.user_data['editing_device_id'] = device_id
+    device_name = get_device(DB_PATH, device_id)['name']
+
+    response = f"""
+✏️ **Редактирование устройства**
+
+💻 **Устройство:** {device_name}
+
+Выберите что изменить:
+    """
+
+    # Кнопки выбора действия
+    keyboard = [
+        [InlineKeyboardButton("📝 Сменить название", callback_data=f"edit_name_{device_id}")],
+        [InlineKeyboardButton("🏷️ Сменить инвентарный номер", callback_data=f"edit_inventory_{device_id}")],
+        [InlineKeyboardButton("🔙 Назад", callback_data=f"device_{device_id}")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    await query.edit_message_text(response, parse_mode='Markdown', reply_markup=reply_markup)
 
 
 async def send_location_change_notification(bot, device_before, device_after, changed_by):
@@ -135,6 +155,42 @@ async def send_location_change_notification(bot, device_before, device_after, ch
             logger.error(f"Не удалось отправить уведомление админу {admin_id}: {e}")
 
 
+async def handle_edit_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    device_id = int(query.data.split('_')[2])
+    context.user_data['editing_name_device_id'] = device_id
+    device = get_device(DB_PATH, device_id)
+
+    response = f"""
+📝 **Смена названия устройства**
+
+Текущее название: **{device['name']}**
+
+Введите новое название:
+    """
+    await query.edit_message_text(response, parse_mode='Markdown')
+
+# Обработчик для смены инвентарного номера
+async def handle_edit_inventory(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    device_id = int(query.data.split('_')[2])
+    context.user_data['editing_inventory_device_id'] = device_id
+    device = get_device(DB_PATH, device_id)
+
+    response = f"""
+🏷️ **Смена инвентарного номера**
+
+Текущий инвентарный: **{device['serial']}**
+
+Введите новый инвентарный номер:
+    """
+    await query.edit_message_text(response, parse_mode='Markdown')
+
+
 # Обработчик выбора устройства
 async def handle_device_selection(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -158,7 +214,8 @@ async def handle_device_selection(update: Update, context: ContextTypes.DEFAULT_
 
         # Кнопки действий для выбранного устройства
         keyboard = [
-            [InlineKeyboardButton("🔄 Обновить локацию", callback_data=f"edit_{device_id}")],
+            [InlineKeyboardButton("🔄 Обновить локацию", callback_data=f"edit_location_{device_id}")],
+            [InlineKeyboardButton("✏️ Редактировать устройство", callback_data=f"edit_device_{device_id}")],
             [InlineKeyboardButton("📋 Вернуться к списку", callback_data="back_to_list")],
             [InlineKeyboardButton("❌ Удалить", callback_data=f"delete_{device_id}")]
         ]
@@ -176,9 +233,14 @@ async def handle_actions(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if query.data == "back_to_list":
         await show_devices_callback(update, context)
-    elif query.data.startswith("edit_"):
-        device_id = int(query.data.split('_')[1])
-        await handle_update_location(update, context)  # Используем новый обработчик
+    elif query.data.startswith("edit_location_"):
+        await handle_update_location(update, context)
+    elif query.data.startswith("edit_device_"):
+        await handle_edit_device(update, context)
+    elif query.data.startswith("edit_name_"):
+        await handle_edit_name(update, context)
+    elif query.data.startswith("edit_inventory_"):
+        await handle_edit_inventory(update, context)
     elif query.data.startswith("delete_"):
         device_id = int(query.data.split('_')[1])
         await query.edit_message_text(f"🗑️ Удаление устройства ID: {device_id}\n\nЭта функция в разработке!")
@@ -247,9 +309,11 @@ def main():
     application.add_handler(CommandHandler("devices", show_devices))
     application.add_handler(CommandHandler("help", help_command))
     application.add_handler(CallbackQueryHandler(handle_device_selection, pattern="^device_"))
-    application.add_handler(CallbackQueryHandler(handle_actions, pattern="^(back_to_list|edit_|delete_)"))
-    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_location_input))
-    # Запускаем бота
+    application.add_handler(CallbackQueryHandler(
+        handle_actions,
+        pattern="^(back_to_list|edit_location_|edit_device_|edit_name_|edit_inventory_|delete_)")
+    )
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_location_input))    # Запускаем бота
     print("Бот запущен...")
     application.run_polling()
 
