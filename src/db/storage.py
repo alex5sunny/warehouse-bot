@@ -130,3 +130,14 @@ def get_device_types(db_path: Path) -> list[str]:
         cursor.execute("SELECT type_name FROM device_types ORDER BY type_name")
         rows = cursor.fetchall()
         return [row[0] for row in rows]
+
+
+def remove_device(db_path, device_id: int):
+    with sqlite3.connect(db_path) as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+        "DELETE FROM devices WHERE id = ?", (device_id,)
+        )
+        cursor.execute(
+        "DELETE FROM type_links WHERE device_id = ?", (device_id,)
+        )

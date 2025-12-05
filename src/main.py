@@ -6,7 +6,7 @@ from telegram.ext import Application, CommandHandler, CallbackQueryHandler, Cont
 
 from db.create_db import create_db
 from db.storage import get_devices, set_location, get_device, set_device_name, set_inventory_n, create_device, \
-    get_device_types
+    get_device_types, remove_device
 from globs import DB_PATH, SRC_PATH, ADMINS
 from logger_config import setup_logger
 
@@ -249,6 +249,76 @@ async def handle_add_device(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data['adding_device'] = 'type'
 
 
+async def handle_delete_confirmation(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Подтверждение удаления устройства"""
+    query = update.callback_query
+    await query.answer()
+
+    device_id = int(query.data.split('_')[1])
+    device = get_device(DB_PATH, device_id)
+
+    if device:
+        response = f"""
+🗑️ **Удаление устройства**
+
+Вы уверены, что хотите удалить устройство?
+
+💻 **Устройство:** {device['name']}
+🔢 **Инвентарный:** {device['inventory_n']}
+🏠 **Локация:** {device['room']}
+
+⚠️ **Это действие нельзя отменить!**
+        """
+
+        keyboard = [
+            [
+                InlineKeyboardButton("✅ Да, удалить", callback_data=f"confirm_delete_{device_id}"),
+                InlineKeyboardButton("❌ Нет, отмена", callback_data=f"device_{device_id}")
+            ]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+
+        await query.edit_message_text(response, parse_mode='Markdown', reply_markup=reply_markup)
+    else:
+        await query.edit_message_text("❌ Устройство не найдено!")
+
+
+async def handle_confirm_delete(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Финальное удаление устройства"""
+    query = update.callback_query
+    await query.answer()
+
+    device_id = int(query.data.split('_')[2])
+    device = get_device(DB_PATH, device_id)
+
+    if device:
+        try:
+            # Удаляем устройство
+            remove_device(DB_PATH, device_id)
+
+            response = f"""
+✅ **Устройство удалено**
+
+💻 **Устройство:** {device['name']}
+🔢 **Инвентарный:** {device['inventory_n']}
+
+Успешно удалено из базы данных.
+            """
+
+            keyboard = [
+                [InlineKeyboardButton("📋 К списку устройств", callback_data="back_to_list")]
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+
+            await query.edit_message_text(response, parse_mode='Markdown', reply_markup=reply_markup)
+
+        except Exception as e:
+            logger.error(f"Ошибка при удалении устройства {device_id}: {e}")
+            await query.edit_message_text(f"❌ Ошибка при удалении устройства: {e}")
+    else:
+        await query.edit_message_text("❌ Устройство не найдено!")
+
+
 # Обработчик выбора устройства
 async def handle_device_selection(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -325,8 +395,9 @@ async def handle_actions(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif query.data.startswith("edit_inventory_"):
         await handle_edit_inventory(update, context)
     elif query.data.startswith("delete_"):
-        device_id = int(query.data.split('_')[1])
-        await query.edit_message_text(f"🗑️ Удаление устройства ID: {device_id}\n\nЭта функция в разработке!")
+        await handle_delete_confirmation(update, context)  # Теперь запрашиваем подтверждение
+    elif query.data.startswith("confirm_delete_"):
+        await handle_confirm_delete(update, context)
 
 
 # Показать устройства через callback (для кнопки "Назад")
@@ -401,7 +472,7 @@ def main():
         CallbackQueryHandler(
             handle_actions,
             pattern="^(back_to_list|add_device|type_|edit_location_|edit_device_|edit_name_|"
-                    "edit_inventory_|delete_)"
+                    "edit_inventory_|delete_|confirm_delete_)"
         )
     )
     application.add_handler(
