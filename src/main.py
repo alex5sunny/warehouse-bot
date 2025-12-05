@@ -103,7 +103,7 @@ async def handle_location_input(update: Update, context: ContextTypes.DEFAULT_TY
         inventory_n = text
 
         # Создаем устройство в БД
-        create_device(DB_PATH, name, inventory_n)
+        create_device(DB_PATH, name, inventory_n, 'ноутбук')
 
         # Очищаем контекст
         context.user_data.pop('adding_device', None)

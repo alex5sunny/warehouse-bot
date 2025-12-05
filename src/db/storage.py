@@ -56,12 +56,20 @@ def _set_device_inventory_n(cursor: Cursor, device_id: int, inventory_n: str):
     )
 
 
-def _create_device(cursor: Cursor, name: str, inventory_n: str):
+def _create_device(cursor: Cursor, name: str, inventory_n: str, type_name: str):
     cursor.execute(
         "INSERT INTO devices (name, inventory_n) VALUES (?, ?)",
         (name, inventory_n)
     )
-    logger.debug('Device inserted?')
+    device_id = cursor.lastrowid
+    cursor.execute(
+        "SELECT id FROM device_types WHERE type_name = ?", (type_name,)
+    )
+    type_id = cursor.fetchone()[0]
+    cursor.execute(
+        "INSERT INTO type_links (type_id, device_id) VALUES (?, ?)",
+        (type_id, device_id)
+    )
 
 
 def get_devices(db_path: Path):
@@ -97,8 +105,8 @@ def set_inventory_n(dp_path: Path, device_id: int, inventory_n: str):
         _set_device_inventory_n(cursor, device_id, inventory_n)
 
 
-def create_device(dp_path: Path, name: str, inventory_n: str):
+def create_device(dp_path: Path, name: str, inventory_n: str, type_name: str):
     with sqlite3.connect(dp_path) as conn:
         cursor = conn.cursor()
-        _create_device(cursor, name, inventory_n)
+        _create_device(cursor, name, inventory_n, type_name)
 

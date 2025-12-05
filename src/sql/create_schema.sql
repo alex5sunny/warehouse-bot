@@ -7,8 +7,8 @@ CREATE TABLE IF NOT EXISTS devices (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
     inventory_n TEXT NOT NULL UNIQUE,
-    room TEXT,
-    user_name TEXT
+    room TEXT DEFAULT 'склад',
+    user_name TEXT DEFAULT ''
 );
 
 CREATE TABLE IF NOT EXISTS type_links (
