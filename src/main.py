@@ -103,9 +103,13 @@ async def handle_location_input(update: Update, context: ContextTypes.DEFAULT_TY
         # Создаем устройство с сохраненным названием и введенным инвентарным номером
         name = context.user_data['new_device_name']
         inventory_n = text
+        device_type = context.user_data['new_device_type']
+
+        user = update.effective_user
+        user_name = user.username if user.username else f"user_{user.id}"
 
         # Создаем устройство в БД
-        create_device(DB_PATH, name, inventory_n, 'ноутбук')
+        create_device(DB_PATH, name, inventory_n, device_type, user_name)
 
         # Очищаем контекст
         context.user_data.pop('adding_device', None)

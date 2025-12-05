@@ -56,10 +56,16 @@ def _set_device_inventory_n(cursor: Cursor, device_id: int, inventory_n: str):
     )
 
 
-def _create_device(cursor: Cursor, name: str, inventory_n: str, type_name: str):
+def _create_device(
+    cursor: Cursor,
+    name: str,
+    inventory_n: str,
+    type_name: str,
+    user_name: str
+):
     cursor.execute(
-        "INSERT INTO devices (name, inventory_n) VALUES (?, ?)",
-        (name, inventory_n)
+        "INSERT INTO devices (name, inventory_n, user_name) VALUES (?, ?, ?)",
+        (name, inventory_n, user_name)
     )
     device_id = cursor.lastrowid
     cursor.execute(
@@ -105,10 +111,16 @@ def set_inventory_n(dp_path: Path, device_id: int, inventory_n: str):
         _set_device_inventory_n(cursor, device_id, inventory_n)
 
 
-def create_device(dp_path: Path, name: str, inventory_n: str, type_name: str):
+def create_device(
+        dp_path: Path,
+        name: str,
+        inventory_n: str,
+        type_name: str,
+        user_name: str
+):
     with sqlite3.connect(dp_path) as conn:
         cursor = conn.cursor()
-        _create_device(cursor, name, inventory_n, type_name)
+        _create_device(cursor, name, inventory_n, type_name, user_name)
 
 
 def get_device_types(db_path: Path) -> list[str]:
