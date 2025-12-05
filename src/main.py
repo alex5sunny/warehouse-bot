@@ -5,7 +5,8 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes, MessageHandler, filters
 
 from db.create_db import create_db
-from db.storage import get_devices, set_location, get_device, set_device_name, set_inventory_n, create_device
+from db.storage import get_devices, set_location, get_device, set_device_name, set_inventory_n, create_device, \
+    get_device_types
 from globs import DB_PATH, SRC_PATH, ADMINS
 from logger_config import setup_logger
 
@@ -90,6 +91,7 @@ async def handle_location_input(update: Update, context: ContextTypes.DEFAULT_TY
         response = f"""
 📝 **Добавление нового устройства**
 
+Тип: **{context.user_data['new_device_type']}**
 Название: **{text}**
 
 Теперь введите инвентарный номер:
@@ -107,6 +109,7 @@ async def handle_location_input(update: Update, context: ContextTypes.DEFAULT_TY
 
         # Очищаем контекст
         context.user_data.pop('adding_device', None)
+        context.user_data.pop('new_device_type', None)
         context.user_data.pop('new_device_name', None)
 
         # Возвращаем к списку устройств
@@ -229,11 +232,17 @@ async def handle_add_device(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
 
-    response = "📝 **Добавление нового устройства**\n\nВведите название устройства:"
-    await query.edit_message_text(response, parse_mode='Markdown')
+    response = "📝 **Добавление нового устройства**\n\nВыберите тип устройства:"
+
+    keyboard = []
+    for type_name in get_device_types(DB_PATH):
+        keyboard.append([InlineKeyboardButton(type_name, callback_data=f"type_{type_name}")])
+
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await query.edit_message_text(response, parse_mode='Markdown', reply_markup=reply_markup)
 
     # Устанавливаем состояние ожидания ввода названия
-    context.user_data['adding_device'] = 'name'
+    context.user_data['adding_device'] = 'type'
 
 
 # Обработчик выбора устройства
@@ -271,6 +280,27 @@ async def handle_device_selection(update: Update, context: ContextTypes.DEFAULT_
         await query.edit_message_text("❌ Устройство не найдено!")
 
 
+async def handle_device_type_selection(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Обработчик выбора типа устройства"""
+    query = update.callback_query
+    await query.answer()
+
+    # Извлекаем название типа из callback_data
+    type_name = query.data[len("type_"):]
+    context.user_data['new_device_type'] = type_name
+    context.user_data['adding_device'] = 'name'
+
+    response = f"""
+📝 **Добавление нового устройства**
+
+Тип: **{type_name}**
+
+Введите название устройства:
+    """
+
+    await query.edit_message_text(response, parse_mode='Markdown')
+
+
 # Обработчик других действий
 async def handle_actions(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -280,6 +310,8 @@ async def handle_actions(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await show_devices_callback(update, context)
     elif query.data == "add_device":
         await handle_add_device(update, context)
+    elif query.data.startswith("type_"):
+        await handle_device_type_selection(update, context)
     elif query.data.startswith("edit_location_"):
         await handle_update_location(update, context)
     elif query.data.startswith("edit_device_"):
@@ -364,7 +396,7 @@ def main():
     application.add_handler(
         CallbackQueryHandler(
             handle_actions,
-            pattern="^(back_to_list|add_device|edit_location_|edit_device_|edit_name_|"
+            pattern="^(back_to_list|add_device|type_|edit_location_|edit_device_|edit_name_|"
                     "edit_inventory_|delete_)"
         )
     )

@@ -110,3 +110,11 @@ def create_device(dp_path: Path, name: str, inventory_n: str, type_name: str):
         cursor = conn.cursor()
         _create_device(cursor, name, inventory_n, type_name)
 
+
+def get_device_types(db_path: Path) -> list[str]:
+    """Получает список всех типов устройств"""
+    with sqlite3.connect(db_path) as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT type_name FROM device_types ORDER BY type_name")
+        rows = cursor.fetchall()
+        return [row[0] for row in rows]
