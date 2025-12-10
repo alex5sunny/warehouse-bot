@@ -82,8 +82,41 @@ async def handle_update_location(update: Update, context: ContextTypes.DEFAULT_T
 async def handle_location_input(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text.strip()
 
-    # Проверяем, какое именно редактирование происходит
-    if context.user_data.get('adding_device') == 'name':
+    if context.user_data.get('adding_device') == 'copy_inventory':
+        # Пользователь ввел инвентарный номер для копии
+        copying_data = context.user_data.get('copying_device')
+        if not copying_data:
+            await update.message.reply_text("❌ Ошибка: данные для копирования не найдены!")
+            return
+
+        # Получаем информацию о текущем пользователе
+        user = update.effective_user
+        user_name = user.username if user.username else f"user_{user.id}"
+
+        response = f"""
+📋 **Подтверждение копирования**
+
+💻 **Устройство:** {copying_data['name']}
+🔢 **Тип:** {copying_data['type_name']}
+🏷️ **Новый инвентарный:** {text}
+👤 **Пользователь:** {user_name}
+
+Подтвердите создание копии:
+    """
+
+        keyboard = [
+            [
+                InlineKeyboardButton("✅ Создать копию", callback_data=f"confirm_copy_{text}"),
+                InlineKeyboardButton("❌ Отмена", callback_data=f"device_{copying_data['device_id']}")
+            ]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+
+        await update.message.reply_text(response, parse_mode='Markdown', reply_markup=reply_markup)
+
+        context.user_data['pending_inventory'] = text
+        return
+    elif context.user_data.get('adding_device') == 'name':
         # Сохраняем название и запрашиваем инвентарный номер
         context.user_data['new_device_name'] = text
         context.user_data['adding_device'] = 'inventory'
@@ -249,6 +282,72 @@ async def handle_add_device(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data['adding_device'] = 'type'
 
 
+async def handle_copy_device(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Обработчик копирования устройства"""
+    query = update.callback_query
+    await query.answer()
+
+    device_id = int(query.data.split('_')[1])
+    device = get_device(DB_PATH, device_id)
+
+    if device:
+        # Сохраняем данные копируемого устройства в контексте
+        context.user_data['copying_device'] = {
+            'device_id': device_id,
+            'name': device['name'],
+            'type_name': device['type_name'],
+            'room': device['room'],
+            'user_name': device['user_name']
+        }
+        context.user_data['adding_device'] = 'copy_inventory'
+
+        response = f"""
+📋 **Копирование устройства**
+
+💻 **Устройство:** {device['name']}
+🔢 **Тип:** {device['type_name']}
+
+Введите новый инвентарный номер для копии:
+        """
+
+        await query.edit_message_text(response, parse_mode='Markdown')
+    else:
+        await query.edit_message_text("❌ Устройство не найдено!")
+
+
+async def handle_copy_complete(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Завершение копирования устройства"""
+    query = update.callback_query
+    await query.answer()
+
+    copying_data = context.user_data.get('copying_device')
+    if not copying_data:
+        await query.edit_message_text("❌ Данные для копирования не найдены!")
+        return
+
+    new_inventory_n = query.data.split('_')[2]
+
+    # Получаем информацию о текущем пользователе из контекста
+    user = query.from_user
+    user_name = user.username if user.username else f"user_{user.id}"
+
+    # Создаем копию устройства
+    create_device(
+        DB_PATH,
+        copying_data['name'],
+        new_inventory_n,
+        copying_data['type_name'],
+        user_name
+    )
+
+    # Очищаем контекст
+    context.user_data.pop('copying_device', None)
+    context.user_data.pop('adding_device', None)
+
+    # Возвращаем к списку устройств
+    await show_devices_callback(update, context)
+
+
 async def handle_delete_confirmation(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Подтверждение удаления устройства"""
     query = update.callback_query
@@ -344,6 +443,7 @@ async def handle_device_selection(update: Update, context: ContextTypes.DEFAULT_
         keyboard = [
             [InlineKeyboardButton("🔄 Обновить локацию", callback_data=f"edit_location_{device_id}")],
             [InlineKeyboardButton("✏️ Редактировать устройство", callback_data=f"edit_device_{device_id}")],
+            [InlineKeyboardButton("📋 Копировать устройство", callback_data=f"copy_{device_id}")],
             [InlineKeyboardButton("📋 Вернуться к списку", callback_data="back_to_list")],
             [InlineKeyboardButton("❌ Удалить", callback_data=f"delete_{device_id}")]
         ]
@@ -380,7 +480,11 @@ async def handle_actions(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
 
-    if query.data == "back_to_list":
+    if query.data.startswith("copy_"):
+        await handle_copy_device(update, context)
+    elif query.data.startswith("confirm_copy_"):
+        await handle_copy_complete(update, context)
+    elif query.data == "back_to_list":
         await show_devices_callback(update, context)
     elif query.data == "add_device":
         await handle_add_device(update, context)
@@ -405,7 +509,7 @@ async def show_devices_callback(update: Update, context: ContextTypes.DEFAULT_TY
     query = update.callback_query
 
     table_header = "📋 Список устройств:\n\n"
-    table_header += "│ Назван │ Устрой │ Серийн │ Комнат  │ Пользо │\n"
+    table_header += "│ Назван │ Устрой │ Инвент │ Комнат  │ Пользо │\n"
     table_header += "├────────┼────────┼────────┤─────────┼────────┤\n"
 
     table_rows = []
@@ -471,7 +575,7 @@ def main():
     application.add_handler(
         CallbackQueryHandler(
             handle_actions,
-            pattern="^(back_to_list|add_device|type_|edit_location_|edit_device_|edit_name_|"
+            pattern="^(copy_|confirm_copy_|back_to_list|add_device|type_|edit_location_|edit_device_|edit_name_|"
                     "edit_inventory_|delete_|confirm_delete_)"
         )
     )

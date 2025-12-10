@@ -116,7 +116,7 @@ def create_device(
         name: str,
         inventory_n: str,
         type_name: str,
-        user_name: str
+        user_name: str | None = None
 ):
     with sqlite3.connect(dp_path) as conn:
         cursor = conn.cursor()

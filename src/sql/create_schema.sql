@@ -17,6 +17,11 @@ CREATE TABLE IF NOT EXISTS type_links (
     PRIMARY KEY (type_id, device_id)
 );
 
+CREATE TABLE IF NOT EXISTS device_history (
+    device_id INTEGER REFERENCES devices(id) ON DELETE CASCADE,
+    date_time TEXT NOT NULL
+);
+
 -- INSERT INTO type_links (type_id, device_id)
 -- SELECT 1, id
 -- FROM devices;
