@@ -14,7 +14,7 @@ from logger_config import setup_logger
 COL_WIDTH = 6
 
 
-logger = setup_logger(__file__)
+logger = setup_logger(__file__, level=logging.DEBUG)
 
 
 # Команда /start
@@ -71,7 +71,7 @@ async def handle_update_location(update: Update, context: ContextTypes.DEFAULT_T
     query = update.callback_query
     await query.answer()
 
-    device_id = int(query.data.split('_')[1])
+    device_id = int(query.data.split('_')[-1])
     context.user_data['editing_device_id'] = device_id
     device_name = get_device(DB_PATH, device_id)['name']
 
@@ -167,7 +167,18 @@ async def handle_location_input(update: Update, context: ContextTypes.DEFAULT_TY
         location = text
         user = update.effective_user
         user_name = user.username if user.username else f"user_{user.id}"
+
+        device_before = get_device(DB_PATH, device_id)
         set_location(DB_PATH, device_id, location, user_name)
+        device_after = get_device(DB_PATH, device_id)
+
+        await send_location_change_notification(
+            context.bot,
+            device_before,
+            device_after,
+            user_name
+        )
+
         context.user_data.pop('editing_device_id', None)
 
     # Возвращаем к списку устройств
@@ -225,6 +236,7 @@ async def send_location_change_notification(bot, device_before, device_after, ch
                 text=notification,
                 parse_mode='Markdown'
             )
+            logger.info(f'уведомление пользователю {admin_id} отправлено')
         except Exception as e:
             logger.error(f"Не удалось отправить уведомление админу {admin_id}: {e}")
 
@@ -509,8 +521,8 @@ async def show_devices_callback(update: Update, context: ContextTypes.DEFAULT_TY
     query = update.callback_query
 
     table_header = "📋 Список устройств:\n\n"
-    table_header += "│ Назван │ Устрой │ Инвент │ Комнат  │ Пользо │\n"
-    table_header += "├────────┼────────┼────────┤─────────┼────────┤\n"
+    table_header += "│ Назван │ Устрой │ Инвент │ Комнат │ Пользо │\n"
+    table_header += "├────────┼────────┼────────┤────────┼────────┤\n"
 
     table_rows = []
     devices = get_devices(DB_PATH)
