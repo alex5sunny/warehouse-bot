@@ -1,7 +1,7 @@
 import datetime
 import logging
 
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, CallbackQuery
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes, MessageHandler, filters
 
 from db.create_db import create_db
@@ -30,7 +30,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(welcome_text)
 
 # Команда /devices - показывает таблицу с кнопками
-async def show_devices(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def show_devices(update: Update|CallbackQuery, context: ContextTypes.DEFAULT_TYPE):
     # Создаем заголовок таблицы
     table_header = "📋 Список устройств:\n\n"
     table_header += "│ Назван │ Устрой │ Инвент │ Комнат │ Пользо │\n"
@@ -49,7 +49,6 @@ async def show_devices(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     table_content = "\n".join(table_rows)
     
-    # Создаем кнопки для выбора устройств
     keyboard = []
     for device in devices:
         button_text = f"{device['name']} ({device['inventory_n']})"
@@ -60,7 +59,7 @@ async def show_devices(update: Update, context: ContextTypes.DEFAULT_TYPE):
     reply_markup = InlineKeyboardMarkup(keyboard)
     
     message_text = (table_header + table_content +
-                            "\n\n👇 Выберите устройство или добавьте новое:")
+                    "\n\n👇 Выберите устройство или добавьте новое:")
     await update.message.reply_text(f"```\n{message_text}\n```", 
                                    parse_mode='MarkdownV2', 
                                    reply_markup=reply_markup)
@@ -236,7 +235,6 @@ async def send_location_change_notification(bot, device_before, device_after, ch
                 text=notification,
                 parse_mode='Markdown'
             )
-            logger.info(f'уведомление пользователю {admin_id} отправлено')
         except Exception as e:
             logger.error(f"Не удалось отправить уведомление админу {admin_id}: {e}")
 
@@ -519,35 +517,7 @@ async def handle_actions(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # Показать устройства через callback (для кнопки "Назад")
 async def show_devices_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-
-    table_header = "📋 Список устройств:\n\n"
-    table_header += "│ Назван │ Устрой │ Инвент │ Комнат │ Пользо │\n"
-    table_header += "├────────┼────────┼────────┤────────┼────────┤\n"
-
-    table_rows = []
-    devices = get_devices(DB_PATH)
-    for device in devices:
-        name = device['name'][:COL_WIDTH].ljust(COL_WIDTH)
-        type = device['type_name'][:COL_WIDTH].ljust(COL_WIDTH)
-        inventory_n = device['inventory_n'][:COL_WIDTH].rjust(COL_WIDTH)
-        room = device['room'][:COL_WIDTH].ljust(COL_WIDTH)
-        user_name = device['user_name'][:COL_WIDTH].ljust(COL_WIDTH)
-        table_rows.append(f"│ {name} │ {type} │ {inventory_n} │ {room} │ {user_name} │")
-    table_content = "\n".join(table_rows)
-
-    keyboard = []
-    for device in devices:
-        button_text = f"{device['name']} ({device['inventory_n']})"
-        keyboard.append([InlineKeyboardButton(button_text, callback_data=f"device_{device['id']}")])
-
-    keyboard.append([InlineKeyboardButton("➕ Добавить устройство", callback_data="add_device")])
-
-    reply_markup = InlineKeyboardMarkup(keyboard)
-
-    message_text = table_header + table_content + "\n\n👇 Выберите устройство или добавьте новое:"
-    await query.edit_message_text(f"```\n{message_text}\n```",
-                                  parse_mode='MarkdownV2',
-                                  reply_markup=reply_markup)
+    await show_devices(query, context)
 
 
 # Команда помощи
