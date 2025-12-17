@@ -18,7 +18,10 @@ CREATE TABLE IF NOT EXISTS type_links (
 );
 
 CREATE TABLE IF NOT EXISTS device_history (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
     device_id INTEGER REFERENCES devices(id) ON DELETE CASCADE,
+    room TEXT,
+    user_name TEXT,
     date_time TEXT NOT NULL
 );
 

@@ -11,14 +11,14 @@ logger = setup_logger(__file__, level=logging.DEBUG)
 
 
 def create_db(db_path: Path, sql_path: Path):
-    if db_path.exists():
-        return
+    db_exists = db_path.exists()
     try:
         with sqlite3.connect(db_path) as conn:
             cursor = conn.cursor()
             _create_db(cursor, sql_path)
-            fill_db(cursor)
-    except Exception as ex:
+            if not db_exists:
+                fill_db(cursor)
+    except Exception:
         logger.exception('cannot create db')
         if db_path.exists():
             db_path.unlink()

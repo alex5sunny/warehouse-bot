@@ -29,41 +29,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 """
     await update.message.reply_text(welcome_text)
 
-# Команда /devices - показывает таблицу с кнопками
-async def show_devices(update: Update|CallbackQuery, context: ContextTypes.DEFAULT_TYPE):
-    # Создаем заголовок таблицы
-    table_header = "📋 Список устройств:\n\n"
-    table_header += "│ Назван │ Устрой │ Инвент │ Комнат │ Пользо │\n"
-    table_header += "├────────┼────────┼────────┤────────┼────────┤\n"
-    
-    # Формируем строки таблицы
-    table_rows = []
-    devices = get_devices(DB_PATH)
-    for device in devices:
-        name = device['name'][:COL_WIDTH].ljust(COL_WIDTH)
-        type = device['type_name'][:COL_WIDTH].ljust(COL_WIDTH)
-        inventory_n = device['inventory_n'][:COL_WIDTH].rjust(COL_WIDTH)
-        room = device['room'][:COL_WIDTH].ljust(COL_WIDTH)
-        user_name = device['user_name'][:COL_WIDTH].ljust(COL_WIDTH)
-        table_rows.append(f"│ {name} │ {type} │ {inventory_n} │ {room} │ {user_name} │")
-    
-    table_content = "\n".join(table_rows)
-    
-    keyboard = []
-    for device in devices:
-        button_text = f"{device['name']} ({device['inventory_n']})"
-        keyboard.append([InlineKeyboardButton(button_text, callback_data=f"device_{device['id']}")])
-
-    keyboard.append([InlineKeyboardButton("➕ Добавить устройство", callback_data="add_device")])
-    
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    
-    message_text = (table_header + table_content +
-                    "\n\n👇 Выберите устройство или добавьте новое:")
-    await update.message.reply_text(f"```\n{message_text}\n```", 
-                                   parse_mode='MarkdownV2', 
-                                   reply_markup=reply_markup)
-
 
 # Обработчик кнопки "Обновить информацию" - запрашиваем новую локацию
 async def handle_update_location(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -514,10 +479,54 @@ async def handle_actions(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await handle_confirm_delete(update, context)
 
 
+def get_devices_table_and_keyboard():
+    """Возвращает таблицу устройств и клавиатуру для нее"""
+    devices = get_devices(DB_PATH)
+
+    # Создаем таблицу
+    table_header = "📋 Список устройств:\n\n"
+    table_header += "│ Назван │ Устрой │ Инвент │ Комнат │ Пользо │\n"
+    table_header += "├────────┼────────┼────────┤────────┼────────┤\n"
+
+    table_rows = []
+    for device in devices:
+        name = device['name'][:COL_WIDTH].ljust(COL_WIDTH)
+        type = device['type_name'][:COL_WIDTH].ljust(COL_WIDTH)
+        inventory_n = device['inventory_n'][:COL_WIDTH].rjust(COL_WIDTH)
+        room = device['room'][:COL_WIDTH].ljust(COL_WIDTH)
+        user_name = device['user_name'][:COL_WIDTH].ljust(COL_WIDTH)
+        table_rows.append(f"│ {name} │ {type} │ {inventory_n} │ {room} │ {user_name} │")
+
+    table_content = "\n".join(table_rows)
+    message_text = table_header + table_content + "\n\n👇 Выберите устройство или добавьте новое:"
+
+    # Создаем клавиатуру
+    keyboard = []
+    for device in devices:
+        button_text = f"{device['name']} ({device['inventory_n']})"
+        keyboard.append([InlineKeyboardButton(button_text, callback_data=f"device_{device['id']}")])
+
+    keyboard.append([InlineKeyboardButton("➕ Добавить устройство", callback_data="add_device")])
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    return f"```\n{message_text}\n```", reply_markup
+
+
+# Команда /devices - показывает таблицу с кнопками
+async def show_devices(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    message_text, reply_markup = get_devices_table_and_keyboard()
+    await update.message.reply_text(message_text,
+                                    parse_mode='MarkdownV2',
+                                    reply_markup=reply_markup)
+
+
 # Показать устройства через callback (для кнопки "Назад")
 async def show_devices_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await show_devices(query, context)
+    message_text, reply_markup = get_devices_table_and_keyboard()
+    await query.edit_message_text(message_text,
+                                  parse_mode='MarkdownV2',
+                                  reply_markup=reply_markup)
 
 
 # Команда помощи
