@@ -6,7 +6,7 @@ from telegram.ext import Application, CommandHandler, CallbackQueryHandler, Cont
 
 from db.create_db import create_db
 from db.storage import get_devices, set_location, get_device, set_device_name, set_inventory_n, create_device, \
-    get_device_types, remove_device
+    get_device_types, remove_device, insert_history_record
 from globs import DB_PATH, SRC_PATH, ADMINS
 from logger_config import setup_logger
 
@@ -135,6 +135,8 @@ async def handle_location_input(update: Update, context: ContextTypes.DEFAULT_TY
         device_before = get_device(DB_PATH, device_id)
         set_location(DB_PATH, device_id, location, user_name)
         device_after = get_device(DB_PATH, device_id)
+
+        insert_history_record(DB_PATH, device_id)
 
         await send_location_change_notification(
             context.bot,

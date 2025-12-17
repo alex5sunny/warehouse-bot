@@ -1,3 +1,4 @@
+import datetime
 import logging
 import sqlite3
 from pathlib import Path
@@ -141,3 +142,24 @@ def remove_device(db_path, device_id: int):
         cursor.execute(
         "DELETE FROM type_links WHERE device_id = ?", (device_id,)
         )
+
+
+def _insert_history_record(cursor: Cursor, device_id: int):
+    cursor.execute(
+        "INSERT INTO device_history "
+        "(device_id, room, user_name, date_time) "
+        "SELECT id, room, user_name, datetime('now', 'localtime') "
+        "FROM devices "
+        "WHERE id = ?",
+        (device_id,)
+    )
+
+
+def insert_history_record(
+        dp_path: Path,
+        device_id: int
+):
+    with sqlite3.connect(dp_path) as conn:
+        cursor = conn.cursor()
+        _insert_history_record(cursor, device_id)
+
