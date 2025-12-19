@@ -163,3 +163,21 @@ def insert_history_record(
         cursor = conn.cursor()
         _insert_history_record(cursor, device_id)
 
+
+def get_device_history(db_path: Path, device_id: int, limit: int = 10):
+    """Получает историю устройства"""
+    with sqlite3.connect(db_path) as conn:
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT room, user_name, date_time
+            FROM device_history
+            WHERE device_id = ?
+            ORDER BY date_time DESC
+            LIMIT ?
+            """,
+            (device_id, limit)
+        )
+        return cursor.fetchall()
+

@@ -421,6 +421,7 @@ async def handle_device_selection(update: Update, context: ContextTypes.DEFAULT_
             [InlineKeyboardButton("🔄 Обновить локацию", callback_data=f"edit_location_{device_id}")],
             [InlineKeyboardButton("✏️ Редактировать устройство", callback_data=f"edit_device_{device_id}")],
             [InlineKeyboardButton("📋 Копировать устройство", callback_data=f"copy_{device_id}")],
+            [InlineKeyboardButton("📜 История перемещений", callback_data=f"history_{device_id}")],
             [InlineKeyboardButton("📋 Вернуться к списку", callback_data="back_to_list")],
             [InlineKeyboardButton("❌ Удалить", callback_data=f"delete_{device_id}")]
         ]
@@ -452,6 +453,87 @@ async def handle_device_type_selection(update: Update, context: ContextTypes.DEF
     await query.edit_message_text(response, parse_mode='Markdown')
 
 
+async def handle_device_history(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Показывает историю перемещений устройства"""
+    query = update.callback_query
+    await query.answer()
+
+    device_id = int(query.data.split('_')[1])
+    device = get_device(DB_PATH, device_id)
+
+    if not device:
+        await query.edit_message_text("❌ Устройство не найдено!")
+        return
+
+    # Получаем историю
+    from db.storage import get_device_history
+    history_records = get_device_history(DB_PATH, device_id, limit=15)
+
+    if not history_records:
+        response = f"""
+📜 **История перемещений**
+
+💻 **Устройство:** {device['name']}
+🔢 **Инвентарный:** {device['inventory_n']}
+
+История перемещений отсутствует.
+        """
+
+        keyboard = [
+            [InlineKeyboardButton("🔙 Назад к устройству", callback_data=f"device_{device_id}")],
+            [InlineKeyboardButton("📋 К списку устройств", callback_data="back_to_list")]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+
+        await query.edit_message_text(response, parse_mode='Markdown', reply_markup=reply_markup)
+        return
+
+    # Формируем сообщение с историей
+    response = f"""
+📜 **История перемещений**
+
+💻 **Устройство:** {device['name']}
+🔢 **Инвентарный:** {device['inventory_n']}
+
+Последние перемещения:
+────────────────────
+"""
+
+    # Добавляем записи истории
+    for i, record in enumerate(history_records, 1):
+        # Форматируем дату для читаемости
+        date_str = record['date_time']
+        # Если дата в формате SQLite (YYYY-MM-DD HH:MM:SS)
+        if len(date_str) > 10:
+            # Преобразуем в более читаемый формат
+            try:
+                dt = datetime.datetime.strptime(date_str, '%Y-%m-%d %H:%M:%S')
+                date_formatted = dt.strftime('%d.%m.%Y %H:%M')
+            except:
+                date_formatted = date_str
+        else:
+            date_formatted = date_str
+
+        room = record['room'] or "Не указана"
+        user_name = record['user_name'] or "Не указан"
+
+        response += f"\n{i}. **{date_formatted}**\n"
+        response += f"   📍 **Локация:** {room}\n"
+        response += f"   👤 **Пользователь:** {user_name}\n"
+        response += "   ────────────────"
+
+    response += f"\n\nВсего записей: {len(history_records)}"
+
+    # Кнопки для навигации
+    keyboard = [
+        [InlineKeyboardButton("🔄 Обновить локацию", callback_data=f"edit_location_{device_id}")],
+        [InlineKeyboardButton("🔙 Назад к устройству", callback_data=f"device_{device_id}")],
+        [InlineKeyboardButton("📋 К списку устройств", callback_data="back_to_list")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await query.edit_message_text(response, parse_mode='Markdown', reply_markup=reply_markup)
+
+
 # Обработчик других действий
 async def handle_actions(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -461,6 +543,8 @@ async def handle_actions(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await handle_copy_device(update, context)
     elif query.data.startswith("confirm_copy_"):
         await handle_copy_complete(update, context)
+    elif query.data.startswith("history_"):
+        await handle_device_history(update, context)
     elif query.data == "back_to_list":
         await show_devices_callback(update, context)
     elif query.data == "add_device":
@@ -568,8 +652,9 @@ def main():
     application.add_handler(
         CallbackQueryHandler(
             handle_actions,
-            pattern="^(copy_|confirm_copy_|back_to_list|add_device|type_|edit_location_|edit_device_|edit_name_|"
-                    "edit_inventory_|delete_|confirm_delete_)"
+            pattern="^(copy_|confirm_copy_|back_to_list|add_device|"
+                    "type_|edit_location_|edit_device_|edit_name_|"
+                    "edit_inventory_|delete_|confirm_delete_|history_)"
         )
     )
     application.add_handler(
