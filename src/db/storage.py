@@ -1,4 +1,3 @@
-import datetime
 import logging
 import sqlite3
 from pathlib import Path
@@ -16,6 +15,7 @@ def _get_devices(cursor: Cursor):
     SELECT devices.id, name, type_name, inventory_n, room, user_name
     FROM devices JOIN type_links ON devices.id = type_links.device_id
     JOIN device_types ON type_links.type_id = device_types.id
+    ORDER BY name
     """)
     rows = cursor.fetchall()
 
